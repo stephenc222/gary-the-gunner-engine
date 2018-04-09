@@ -2,42 +2,9 @@
 #include <stdlib.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-
-typedef struct {
-  int isKeyDown;
-  int isMouseDown;
-  double mouseX;
-  double mouseY;
-  int whichKey;
-} GameInput;
-
-typedef struct t_Game {
-  int numSceneRects;
-  // GameMap* gameMap;
-  GameInput* gameInput;
-  // GameMenu* gameMenu;
-  // Player* player;
-  // Boss* firstBoss;
-  // NPC* maleOne;
-  // Inventory* inventory;
-  // int fightDelay;
-  // char* currentSceneName;
-  void (*updateFunc)( struct t_Game* game, float dt);
-  void (*renderFunc)( struct t_Game* game);
-} Game;
-
-// game is a global data structure
-Game* game;
-
-int initGame(void);
-void update(Game* game, float dt);
-void render(GLFWwindow* window, Game* game);
-void cleanUp(GLFWwindow* window, Game* game);
-void handleInput(GLFWwindow* window, int key, int scancode, int action, int mods);
-void destroyGameInput(GameInput* gameInput);
-Game* newGame(void);
-void destroyGame(Game* game);
-GameInput* newGameInput();
+#include "main.h"
+#include <glm/glm.hpp>
+using namespace glm;
 
 void handleInput(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -48,7 +15,7 @@ void handleInput(GLFWwindow* window, int key, int scancode, int action, int mods
 
 GameInput* newGameInput() {
   
-  GameInput* gameInput = malloc(sizeof *gameInput);
+  GameInput* gameInput = new GameInput;
   gameInput->isKeyDown = 0;
   gameInput->mouseX = 0;
   gameInput->mouseY = 0;
@@ -60,7 +27,8 @@ GameInput* newGameInput() {
 
 void destroyGameInput(GameInput* gameInput) {
   if (gameInput) {
-    free(gameInput);
+    delete gameInput;
+    gameInput = 0;
   }
 }
 
@@ -69,20 +37,36 @@ void destroyGame(Game* game) {
   if (game->gameInput) {
     destroyGameInput(game->gameInput);
   }
+  delete game;
   game = 0;
 }
 
 Game* newGame(void) {
-  Game* game = malloc(sizeof *game);
+  Game* game = new Game;
   game->gameInput = newGameInput();
   game->updateFunc = 0;
   game->renderFunc = 0;
   return game;
 }
 
-void render(GLFWwindow* window, Game* game) {
+void render(GLFWwindow* window, Game* game, GLuint* vertexbuffer) {
    /* Render here */
   glClear(GL_COLOR_BUFFER_BIT);
+
+  // 1rst attribute buffer : vertices
+  glEnableVertexAttribArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, *vertexbuffer);
+  glVertexAttribPointer(
+    0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
+    3,                  // size
+    GL_FLOAT,           // type
+    GL_FALSE,           // normalized?
+    0,                  // stride
+    (void*)0            // array buffer offset
+  );
+  // Draw the triangle !
+  glDrawArrays(GL_TRIANGLES, 0, 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
+  glDisableVertexAttribArray(0);
 
   /* Swap front and back buffers */
   glfwSwapBuffers(window);
@@ -112,7 +96,7 @@ int initGame(void) {
     return -1;
 
   /* Create a windowed mode window and its OpenGL context */
-  window = glfwCreateWindow(640, 480, "Gary the Gunner - Alpha", NULL, NULL);
+  window = glfwCreateWindow(640, 480, "Gary the Gunner - Alpha in C++", NULL, NULL);
   if (!window)
   {
     glfwTerminate();
@@ -122,7 +106,7 @@ int initGame(void) {
   /* Make the window's context current */
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);
-  glewExperimental=1; // Needed in core profile
+  glewExperimental=true; // Needed in core profile
   if (glewInit() != GLEW_OK) {
     fprintf(stderr, "Failed to initialize GLEW\n");
     return -1;
@@ -133,8 +117,22 @@ int initGame(void) {
   glBindVertexArray(VertexArrayID);
   // NOTE: continue on from here:
   // http://www.opengl-tutorial.org/beginners-tutorials/tutorial-2-the-first-triangle/
+  static const GLfloat g_vertex_buffer_data[] = {
+    -1.0f, -1.0f, 0.0f,
+    1.0f, -1.0f, 0.0f,
+    0.0f,  1.0f, 0.0f,
+  };
 
-  game = newGame();
+  // This will identify our vertex buffer
+  GLuint vertexbuffer;
+  // Generate 1 buffer, put the resulting identifier in vertexbuffer
+  glGenBuffers(1, &vertexbuffer);
+  // The following commands will talk about our 'vertexbuffer' buffer
+  glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+  // Give our vertices to OpenGL.
+  glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+
+  Game* game = newGame();
 
   // set up basic player events, will eventually be scene-dependent
   glfwSetKeyCallback(window, handleInput);
@@ -156,7 +154,7 @@ int initGame(void) {
       update(game, dt);
     }
     lastTime = currentTime;
-    render( window, game);
+    render( window, game, &vertexbuffer);
   }
 
   cleanUp(window, game);
