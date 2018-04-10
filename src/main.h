@@ -8,7 +8,7 @@ typedef struct {
 
 typedef struct t_Game {
   int numSceneRects;
-  // GameMap* gameMap;
+  // GameMap* gameMap; 
   GameInput* gameInput;
   // GameMenu* gameMenu;
   // Player* player;

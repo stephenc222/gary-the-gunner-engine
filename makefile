@@ -1,6 +1,6 @@
 CC := g++
-CFLAGS ?= $(shell pkg-config glew glfw3 glm --cflags) -O0
-LDFLAGS ?= $(shell pkg-config glew glfw3 glm --libs) -Wl,-headerpad_max_install_names -framework OpenGL
+CFLAGS ?= $(shell pkg-config glew glm --cflags) -O0
+LDFLAGS ?= $(shell pkg-config glew glm --libs) -Wl,-headerpad_max_install_names -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo
 
 TARGET_EXEC ?= game
 BUILD_DIR ?= ./bin
@@ -13,7 +13,7 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 CPPFLAGS ?= $(INC_FLAGS) -MMD -MP -g
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
-	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS) ./src/lib/libglfw.3.3.dylib
 
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(MKDIR_P) $(dir $@)
