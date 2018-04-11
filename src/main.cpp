@@ -11,6 +11,10 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION 1
+#include "./include/stb_image.h"
+
+
 using namespace glm;
 using namespace std;
 GLuint programID;
@@ -364,6 +368,22 @@ int initGame(void) {
 
   /* Loop until the user closes the window */
   programID = LoadShaders( "./assets/simple.vs", "./assets/simple.fs" );
+
+  int pngWidth, pngHeight, bpp;
+  // pngWidth = 1024;
+  // pngHeight = 1024;
+  // bpp = 3;
+  unsigned char* rgb = stbi_load( "./assets/uvmaptexture_1024_1024.png", &pngWidth, &pngHeight, &bpp, 4 );
+  // rgb is now three bytes per pixel, width*height size. Or NULL if load failed.
+  // Do something with it...
+  if (rgb == NULL) {
+    cout << "Failed to load \n";
+  }
+  for (int a = 0; a < sizeof(rgb)/ sizeof(rgb[0]); ++a) {
+    cout << "a: " << a << " value typeof: " << rgb[a] << std::endl;
+  }
+  cout << "loaded file, rgb: " << rgb[0] << " width: " << pngWidth << std::endl; 
+  stbi_image_free( rgb );
 
   //glUseProgram(programID);
 
