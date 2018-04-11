@@ -13,6 +13,12 @@
 
 using namespace glm;
 using namespace std;
+GLuint programID;
+GLuint vertexbuffer;
+GLuint colorbuffer;
+GLuint MatrixID;
+glm::mat4 mvp;
+
 
 GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path){
 
@@ -153,34 +159,48 @@ Game* newGame(void) {
 
 void render(GLFWwindow* window, Game* game, GLuint* vertexbuffer) {
    /* Render here */
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  // Clear the screen
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // 1rst attribute buffer : vertices
-  glEnableVertexAttribArray(0);
-  glEnableVertexAttribArray(1);
-  // glBindBuffer(GL_ARRAY_BUFFER, *vertexbuffer);
-  glVertexAttribPointer(
-    1,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-    3,                  // size
-    GL_FLOAT,           // type
-    GL_FALSE,           // normalized?
-    0,                  // stride
-    (void*)0            // array buffer offset
-  );
-  glVertexAttribPointer(
-    0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-    3,                  // size
-    GL_FLOAT,           // type
-    GL_FALSE,           // normalized?
-    0,                  // stride
-    (void*)0            // array buffer offset
-  );
-  // Draw the triangle !
-  // glDrawArrays(GL_TRIANGLES, 0, 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
-  glDrawArrays(GL_TRIANGLES, 0, 12 * 3); // Starting from vertex 0; 3 vertices total -> 1 triangle
-  glDisableVertexAttribArray(0);
-  glDisableVertexAttribArray(1);
+		// Use our shader
+		glUseProgram(programID);
 
+		// Send our transformation to the currently bound shader, 
+		// in the "MVP" uniform
+		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &mvp[0][0]);
+
+		// 1rst attribute buffer : vertices
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, *vertexbuffer);
+		glVertexAttribPointer(
+			0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+			3,                  // size
+			GL_FLOAT,           // type
+			GL_FALSE,           // normalized?
+			0,                  // stride
+			(void*)0            // array buffer offset
+		);
+
+		// 2nd attribute buffer : colors
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+		glVertexAttribPointer(
+			1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			3,                                // size
+			GL_FLOAT,                         // type
+			GL_FALSE,                         // normalized?
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
+		// Draw the triangle !
+		glDrawArrays(GL_TRIANGLES, 0, 12*3); // 12*3 indices starting at 0 -> 12 triangles
+
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+
+		// Swap buffers
+		// glfwSwapBuffers(window);
   /* Swap front and back buffers */
   glfwSwapBuffers(window);
 }
@@ -225,6 +245,11 @@ int initGame(void) {
     fprintf(stderr, "Failed to initialize GLEW\n");
     return -1;
   }
+
+  // Enable depth test
+  glEnable(GL_DEPTH_TEST);
+  // Accept fragment if it closer to the camera than the former one
+  glDepthFunc(GL_LESS);
 
   printf("MY VERSION: %s \n",glGetString(GL_VERSION));
 
@@ -319,13 +344,12 @@ int initGame(void) {
       0.982f,  0.099f,  0.879f
   };
 
-  GLuint colorbuffer;
+  // GLuint colorbuffer;
   glGenBuffers(1, &colorbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
   glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data), g_color_buffer_data, GL_STATIC_DRAW);
 
   // This will identify our vertex buffer
-  GLuint vertexbuffer;
   // Generate 1 buffer, put the resulting identifier in vertexbuffer
   glGenBuffers(1, &vertexbuffer);
   // The following commands will talk about our 'vertexbuffer' buffer
@@ -339,9 +363,9 @@ int initGame(void) {
   glfwSetKeyCallback(window, handleInput);
 
   /* Loop until the user closes the window */
-  GLuint programID = LoadShaders( "./assets/simple.vs", "./assets/simple.fs" );
+  programID = LoadShaders( "./assets/simple.vs", "./assets/simple.fs" );
 
-  glUseProgram(programID);
+  //glUseProgram(programID);
 
   // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
   float width = 4;
@@ -361,11 +385,11 @@ int initGame(void) {
   // Model matrix : an identity matrix (model will be at the origin)
   glm::mat4 Model = glm::mat4(1.0f);
   // Our ModelViewProjection : multiplication of our 3 matrices
-  glm::mat4 mvp = Projection * View * Model; // Remember, matrix multiplication is the other way around
+  mvp = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
   // Get a handle for our "MVP" uniform
   // Only during the initialisation
-  GLuint MatrixID = glGetUniformLocation(programID, "MVP");
+  MatrixID = glGetUniformLocation(programID, "MVP");
     
   // Send our transformation to the currently bound shader, in the "MVP" uniform
   // This is done in the main loop since each model will have a different MVP matrix (At least for the M part)
