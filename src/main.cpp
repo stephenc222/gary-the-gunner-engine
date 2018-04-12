@@ -20,8 +20,36 @@ using namespace std;
 GLuint programID;
 GLuint vertexbuffer;
 GLuint colorbuffer;
+GLuint uvbuffer;
 GLuint MatrixID;
 glm::mat4 mvp;
+
+GLuint LoadPng(const char* filename);
+
+GLuint LoadPng(const char* filename, GLsizei id) {
+  int pngWidth, pngHeight, bpp;
+  unsigned char* rgbData = stbi_load( filename, &pngWidth, &pngHeight, &bpp, 4 );
+  // rgb is now three bytes per pixel, width*height size. Or NULL if load failed.
+  // Do something with it...
+  if (rgbData == NULL) {
+    cerr << "Failed to load \n";
+    return 0;
+  }
+  // Create one OpenGL texture
+  GLuint textureID;
+  glGenTextures(id, &textureID);
+
+  // "Bind" the newly created texture : all future texture functions will modify this texture
+  glBindTexture(GL_TEXTURE_2D, textureID);
+
+  // Give the image to OpenGL
+  glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, pngWidth, pngHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, rgbData);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  stbi_image_free( rgbData );
+  return textureID;
+}
 
 
 GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path){
@@ -187,7 +215,7 @@ void render(GLFWwindow* window, Game* game, GLuint* vertexbuffer) {
 
 		// 2nd attribute buffer : colors
 		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 		glVertexAttribPointer(
 			1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
 			3,                                // size
@@ -309,49 +337,127 @@ int initGame(void) {
   };
 
   // One color for each vertex. They were generated randomly.
-  static const GLfloat g_color_buffer_data[] = {
-      0.583f,  0.771f,  0.014f,
-      0.609f,  0.115f,  0.436f,
-      0.327f,  0.483f,  0.844f,
-      0.822f,  0.569f,  0.201f,
-      0.435f,  0.602f,  0.223f,
-      0.310f,  0.747f,  0.185f,
-      0.597f,  0.770f,  0.761f,
-      0.559f,  0.436f,  0.730f,
-      0.359f,  0.583f,  0.152f,
-      0.483f,  0.596f,  0.789f,
-      0.559f,  0.861f,  0.639f,
-      0.195f,  0.548f,  0.859f,
-      0.014f,  0.184f,  0.576f,
-      0.771f,  0.328f,  0.970f,
-      0.406f,  0.615f,  0.116f,
-      0.676f,  0.977f,  0.133f,
-      0.971f,  0.572f,  0.833f,
-      0.140f,  0.616f,  0.489f,
-      0.997f,  0.513f,  0.064f,
-      0.945f,  0.719f,  0.592f,
-      0.543f,  0.021f,  0.978f,
-      0.279f,  0.317f,  0.505f,
-      0.167f,  0.620f,  0.077f,
-      0.347f,  0.857f,  0.137f,
-      0.055f,  0.953f,  0.042f,
-      0.714f,  0.505f,  0.345f,
-      0.783f,  0.290f,  0.734f,
-      0.722f,  0.645f,  0.174f,
-      0.302f,  0.455f,  0.848f,
-      0.225f,  0.587f,  0.040f,
-      0.517f,  0.713f,  0.338f,
-      0.053f,  0.959f,  0.120f,
-      0.393f,  0.621f,  0.362f,
-      0.673f,  0.211f,  0.457f,
-      0.820f,  0.883f,  0.371f,
-      0.982f,  0.099f,  0.879f
+  // static const GLfloat g_color_buffer_data[] = {
+  //     0.583f,  0.771f,  0.014f,
+  //     0.609f,  0.115f,  0.436f,
+  //     0.327f,  0.483f,  0.844f,
+  //     0.822f,  0.569f,  0.201f,
+  //     0.435f,  0.602f,  0.223f,
+  //     0.310f,  0.747f,  0.185f,
+  //     0.597f,  0.770f,  0.761f,
+  //     0.559f,  0.436f,  0.730f,
+  //     0.359f,  0.583f,  0.152f,
+  //     0.483f,  0.596f,  0.789f,
+  //     0.559f,  0.861f,  0.639f,
+  //     0.195f,  0.548f,  0.859f,
+  //     0.014f,  0.184f,  0.576f,
+  //     0.771f,  0.328f,  0.970f,
+  //     0.406f,  0.615f,  0.116f,
+  //     0.676f,  0.977f,  0.133f,
+  //     0.971f,  0.572f,  0.833f,
+  //     0.140f,  0.616f,  0.489f,
+  //     0.997f,  0.513f,  0.064f,
+  //     0.945f,  0.719f,  0.592f,
+  //     0.543f,  0.021f,  0.978f,
+  //     0.279f,  0.317f,  0.505f,
+  //     0.167f,  0.620f,  0.077f,
+  //     0.347f,  0.857f,  0.137f,
+  //     0.055f,  0.953f,  0.042f,
+  //     0.714f,  0.505f,  0.345f,
+  //     0.783f,  0.290f,  0.734f,
+  //     0.722f,  0.645f,  0.174f,
+  //     0.302f,  0.455f,  0.848f,
+  //     0.225f,  0.587f,  0.040f,
+  //     0.517f,  0.713f,  0.338f,
+  //     0.053f,  0.959f,  0.120f,
+  //     0.393f,  0.621f,  0.362f,
+  //     0.673f,  0.211f,  0.457f,
+  //     0.820f,  0.883f,  0.371f,
+  //     0.982f,  0.099f,  0.879f
+  // };
+
+  // Two UV coordinatesfor each vertex. They were created with Blender. You'll learn shortly how to do this yourself.
+  // static const GLfloat g_uv_buffer_data[] = {
+  //     0.000059f, 1.0f-0.000004f,
+  //     0.000103f, 1.0f-0.336048f,
+  //     0.335973f, 1.0f-0.335903f,
+  //     1.000023f, 1.0f-0.000013f,
+  //     0.667979f, 1.0f-0.335851f,
+  //     0.999958f, 1.0f-0.336064f,
+  //     0.667979f, 1.0f-0.335851f,
+  //     0.336024f, 1.0f-0.671877f,
+  //     0.667969f, 1.0f-0.671889f,
+  //     1.000023f, 1.0f-0.000013f,
+  //     0.668104f, 1.0f-0.000013f,
+  //     0.667979f, 1.0f-0.335851f,
+  //     0.000059f, 1.0f-0.000004f,
+  //     0.335973f, 1.0f-0.335903f,
+  //     0.336098f, 1.0f-0.000071f,
+  //     0.667979f, 1.0f-0.335851f,
+  //     0.335973f, 1.0f-0.335903f,
+  //     0.336024f, 1.0f-0.671877f,
+  //     1.000004f, 1.0f-0.671847f,
+  //     0.999958f, 1.0f-0.336064f,
+  //     0.667979f, 1.0f-0.335851f,
+  //     0.668104f, 1.0f-0.000013f,
+  //     0.335973f, 1.0f-0.335903f,
+  //     0.667979f, 1.0f-0.335851f,
+  //     0.335973f, 1.0f-0.335903f,
+  //     0.668104f, 1.0f-0.000013f,
+  //     0.336098f, 1.0f-0.000071f,
+  //     0.000103f, 1.0f-0.336048f,
+  //     0.000004f, 1.0f-0.671870f,
+  //     0.336024f, 1.0f-0.671877f,
+  //     0.000103f, 1.0f-0.336048f,
+  //     0.336024f, 1.0f-0.671877f,
+  //     0.335973f, 1.0f-0.335903f,
+  //     0.667969f, 1.0f-0.671889f,
+  //     1.000004f, 1.0f-0.671847f,
+  //     0.667979f, 1.0f-0.335851f
+  // };
+
+  static const GLfloat g_uv_buffer_data[] = {
+      1.000059f, 1.0f-0.000004f,
+      1.000103f, 1.0f-0.336048f,
+      1.335973f, 1.0f-0.335903f,
+      1.000023f, 1.0f-0.000013f,
+      1.667979f, 1.0f-0.335851f,
+      1.999958f, 1.0f-0.336064f,
+      1.667979f, 1.0f-0.335851f,
+      1.336024f, 1.0f-0.671877f,
+      1.667969f, 1.0f-0.671889f,
+      1.000023f, 1.0f-0.000013f,
+      1.668104f, 1.0f-0.000013f,
+      1.667979f, 1.0f-0.335851f,
+      1.000059f, 1.0f-0.000004f,
+      0.335973f, 0.0f-0.335903f,
+      0.336098f, 0.0f-0.000071f,
+      0.667979f, 0.0f-0.335851f,
+      0.335973f, 0.0f-0.335903f,
+      0.336024f, 0.0f-0.671877f,
+      1.000004f, 0.0f-0.671847f,
+      0.999958f, 0.0f-0.336064f,
+      0.667979f, 0.0f-0.335851f,
+      0.668104f, 0.0f-0.000013f,
+      0.335973f, 0.0f-0.335903f,
+      0.667979f, 0.0f-0.335851f,
+      0.335973f, 0.0f-0.335903f,
+      0.668104f, 0.0f-0.000013f,
+      0.336098f, 0.0f-0.000071f,
+      0.000103f, 0.0f-0.336048f,
+      0.000004f, 0.0f-0.671870f,
+      0.336024f, 0.0f-0.671877f,
+      0.000103f, 0.0f-0.336048f,
+      0.336024f, 0.0f-0.671877f,
+      0.335973f, 0.0f-0.335903f,
+      0.667969f, 0.0f-0.671889f,
+      1.000004f, 0.0f-0.671847f,
+      0.667979f, 0.0f-0.335851f
   };
 
-  // GLuint colorbuffer;
-  glGenBuffers(1, &colorbuffer);
-  glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data), g_color_buffer_data, GL_STATIC_DRAW);
+  glGenBuffers(1, &uvbuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
 
   // This will identify our vertex buffer
   // Generate 1 buffer, put the resulting identifier in vertexbuffer
@@ -361,6 +467,12 @@ int initGame(void) {
   // Give our vertices to OpenGL.
   glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
+  // loading png to texture
+  GLuint Texture = LoadPng("./assets/uvmaptexture_1024_1024.png", 1);
+
+  cout << "Texture: " << Texture << endl;
+
+
   Game* game = newGame();
 
   // set up basic player events, will eventually be scene-dependent
@@ -369,21 +481,7 @@ int initGame(void) {
   /* Loop until the user closes the window */
   programID = LoadShaders( "./assets/simple.vs", "./assets/simple.fs" );
 
-  int pngWidth, pngHeight, bpp;
-  // pngWidth = 1024;
-  // pngHeight = 1024;
-  // bpp = 3;
-  unsigned char* rgb = stbi_load( "./assets/uvmaptexture_1024_1024.png", &pngWidth, &pngHeight, &bpp, 4 );
-  // rgb is now three bytes per pixel, width*height size. Or NULL if load failed.
-  // Do something with it...
-  if (rgb == NULL) {
-    cout << "Failed to load \n";
-  }
-  for (int a = 0; a < sizeof(rgb)/ sizeof(rgb[0]); ++a) {
-    cout << "a: " << a << " value typeof: " << rgb[a] << std::endl;
-  }
-  cout << "loaded file, rgb: " << rgb[0] << " width: " << pngWidth << std::endl; 
-  stbi_image_free( rgb );
+  
 
   //glUseProgram(programID);
 
@@ -433,7 +531,7 @@ int initGame(void) {
     lastTime = currentTime;
     render( window, game, &vertexbuffer);
   }
-  glDeleteBuffers(1, &vertexbuffer);
+  glDeleteBuffers(0, &vertexbuffer);
   cleanUp(window, game);
   return 0;
 }
