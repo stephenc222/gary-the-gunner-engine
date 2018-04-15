@@ -31,4 +31,3 @@ extern void destroyGameInput(GameInput* gameInput);
 extern Game* newGame(void);
 extern void destroyGame(Game* game);
 extern GameInput* newGameInput();
-extern GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path);
